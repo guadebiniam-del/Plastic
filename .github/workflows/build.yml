@@ -14,11 +14,14 @@ jobs:
           java-version: '17'
           distribution: 'temurin'
       - name: Make gradlew executable
-        run: chmod +x gradlew
+        run: chmod +x app/gradlew
+        continue-on-error: true
       - name: Build APK
-        run: ./gradlew assembleDebug
+        run: |
+          cd app
+          ./gradlew assembleDebug || ../gradlew assembleDebug
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: app-debug
-          path: app/build/outputs/apk/debug/
+          path: "**/build/outputs/apk/debug/*.apk"
