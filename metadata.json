@@ -1,0 +1,6 @@
+{
+  "name": "Anwar Recycling",
+  "description": "Daily plastics recycling and fabrication inventory tracker for Anwar Plastic Recycling.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
