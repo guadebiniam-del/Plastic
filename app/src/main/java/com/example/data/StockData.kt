@@ -11,7 +11,9 @@ data class StockEntry(
     val size: String,
     val weightKg: Double,
     val pieces: Int = 0,      // Number of physical bag pieces
-    val counter: Int = 0,     // Machine or operator batch counter
+    val counter: Int = 0,     // Machine or operator batch counter (Bags Count)
+    val piecesPerBag: Int = 0,  // Number of pieces (ፍሬ) in one bag
+    val kgPerBag: Double = 0.0, // Weight in kg of one bag
     val type: String, // "FABRICATED" or "SOLD"
     val timestamp: Long = System.currentTimeMillis()
 ) {
@@ -39,7 +41,7 @@ interface StockDao {
     suspend fun clearAll()
 }
 
-@Database(entities = [StockEntry::class], version = 2, exportSchema = false)
+@Database(entities = [StockEntry::class], version = 3, exportSchema = false)
 abstract class StockDatabase : RoomDatabase() {
     abstract fun stockDao(): StockDao
 

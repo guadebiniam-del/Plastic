@@ -15,6 +15,9 @@ data class ItemStockSummary(
     val totalFabricatedKg: Double,
     val totalSoldKg: Double,
     val netStockKg: Double,
+    val totalFabricatedBags: Int,
+    val totalSoldBags: Int,
+    val netStockBags: Int,
     val totalFabricatedPieces: Int,
     val totalSoldPieces: Int,
     val netStockPieces: Int,
@@ -25,6 +28,9 @@ data class OverallSummary(
     val totalFabricatedKg: Double,
     val totalSoldKg: Double,
     val netStockKg: Double,
+    val totalFabricatedBags: Int,
+    val totalSoldBags: Int,
+    val netStockBags: Int,
     val totalFabricatedPieces: Int,
     val totalSoldPieces: Int,
     val netStockPieces: Int
@@ -35,27 +41,23 @@ class StockViewModel(application: Application) : AndroidViewModel(application) {
     
     // Predefined plastic bag item categories for quick selection
     val predefinedItems = listOf(
+        "DPunch Bag",
         "HDPE T-Shirt Bag",
         "LDPE Flat Bag",
         "PP High-Clarity Bag",
-        "Biodegradable Carrier",
         "Drawstring Garbage Bag",
-        "Heavy Duty Poly Sack",
-        "Zipper Stand-up Pouch"
+        "Heavy Duty Poly Sack"
     )
 
     // Predefined bag sizes for quick Selection
     val predefinedSizes = listOf(
+        "35×48",
+        "44×79",
         "20 x 30 cm",
         "25 x 40 cm",
         "30 x 45 cm",
-        "35 x 50 cm",
         "40 x 60 cm",
-        "50 x 75 cm",
-        "60 x 90 cm",
-        "8 x 12 inches",
-        "12 x 18 inches",
-        "18 x 24 inches"
+        "12 x 18 inches"
     )
 
     init {
@@ -115,6 +117,14 @@ class StockViewModel(application: Application) : AndroidViewModel(application) {
                 .filter { it.type == StockEntry.TYPE_SOLD }
                 .sumOf { it.weightKg }
 
+            val totalFabricatedBags = groupEntries
+                .filter { it.type == StockEntry.TYPE_FABRICATED }
+                .sumOf { it.counter }
+            
+            val totalSoldBags = groupEntries
+                .filter { it.type == StockEntry.TYPE_SOLD }
+                .sumOf { it.counter }
+
             val totalFabricatedPcs = groupEntries
                 .filter { it.type == StockEntry.TYPE_FABRICATED }
                 .sumOf { it.pieces }
@@ -133,6 +143,9 @@ class StockViewModel(application: Application) : AndroidViewModel(application) {
                 totalFabricatedKg = totalFabricated,
                 totalSoldKg = totalSold,
                 netStockKg = totalFabricated - totalSold,
+                totalFabricatedBags = totalFabricatedBags,
+                totalSoldBags = totalSoldBags,
+                netStockBags = totalFabricatedBags - totalSoldBags,
                 totalFabricatedPieces = totalFabricatedPcs,
                 totalSoldPieces = totalSoldPcs,
                 netStockPieces = totalFabricatedPcs - totalSoldPcs,
@@ -145,17 +158,22 @@ class StockViewModel(application: Application) : AndroidViewModel(application) {
     val overallSummary: StateFlow<OverallSummary> = stockSummaries.map { summaries ->
         val totalFabricated = summaries.sumOf { it.totalFabricatedKg }
         val totalSold = summaries.sumOf { it.totalSoldKg }
+        val totalFabricatedBags = summaries.sumOf { it.totalFabricatedBags }
+        val totalSoldBags = summaries.sumOf { it.totalSoldBags }
         val totalFabricatedPcs = summaries.sumOf { it.totalFabricatedPieces }
         val totalSoldPcs = summaries.sumOf { it.totalSoldPieces }
         OverallSummary(
             totalFabricatedKg = totalFabricated,
             totalSoldKg = totalSold,
             netStockKg = totalFabricated - totalSold,
+            totalFabricatedBags = totalFabricatedBags,
+            totalSoldBags = totalSoldBags,
+            netStockBags = totalFabricatedBags - totalSoldBags,
             totalFabricatedPieces = totalFabricatedPcs,
             totalSoldPieces = totalSoldPcs,
             netStockPieces = totalFabricatedPcs - totalSoldPcs
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), OverallSummary(0.0, 0.0, 0.0, 0, 0, 0))
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), OverallSummary(0.0, 0.0, 0.0, 0, 0, 0, 0, 0, 0))
 
     // Operations
     fun updateSearchQuery(query: String) {
@@ -170,16 +188,27 @@ class StockViewModel(application: Application) : AndroidViewModel(application) {
         _filterItem.value = item
     }
 
-    fun addEntry(name: String, size: String, weight: Double, pieces: Int, counter: Int, type: String) {
+    fun addEntry(
+        name: String,
+        size: String,
+        bagsCount: Int,
+        piecesPerBag: Int,
+        kgPerBag: Double,
+        type: String
+    ) {
         viewModelScope.launch {
-            if (name.isNotBlank() && size.isNotBlank() && weight > 0) {
+            if (name.isNotBlank() && size.isNotBlank() && bagsCount > 0) {
+                val totalWeight = bagsCount * kgPerBag
+                val totalPieces = bagsCount * piecesPerBag
                 repository.insert(
                     StockEntry(
                         itemName = name.trim(),
                         size = size.trim(),
-                        weightKg = weight,
-                        pieces = pieces,
-                        counter = counter,
+                        weightKg = totalWeight,
+                        pieces = totalPieces,
+                        counter = bagsCount,
+                        piecesPerBag = piecesPerBag,
+                        kgPerBag = kgPerBag,
                         type = type
                     )
                 )
@@ -209,60 +238,78 @@ class StockViewModel(application: Application) : AndroidViewModel(application) {
         viewModelScope.launch {
             repository.clear()
             
-            // Seed sample plastic bag fabrications and sales with piece count & machine counters!
+            // Seed sample plastic bag fabrications and sales with exact pieces & bag counters!
             val samples = listOf(
+                // DPunch size 35×48, Fabricated: 50 bags, 30 pieces/bag, 15.0 kg/bag
                 StockEntry(
-                    itemName = "HDPE T-Shirt Bag", 
-                    size = "30 x 45 cm", 
-                    weightKg = 450.0, 
-                    pieces = 15000, 
-                    counter = 120500, 
-                    type = StockEntry.TYPE_FABRICATED, 
+                    itemName = "DPunch Bag",
+                    size = "35×48",
+                    weightKg = 50 * 15.0,
+                    pieces = 50 * 30,
+                    counter = 50,
+                    piecesPerBag = 30,
+                    kgPerBag = 15.0,
+                    type = StockEntry.TYPE_FABRICATED,
                     timestamp = System.currentTimeMillis() - 72000000
                 ),
+                // DPunch size 35×48, Sold: 12 bags, 30 pieces/bag, 15.0 kg/bag
                 StockEntry(
-                    itemName = "HDPE T-Shirt Bag", 
-                    size = "30 x 45 cm", 
-                    weightKg = 120.0, 
-                    pieces = 4000, 
-                    counter = 0, 
-                    type = StockEntry.TYPE_SOLD, 
+                    itemName = "DPunch Bag",
+                    size = "35×48",
+                    weightKg = 12 * 15.0,
+                    pieces = 12 * 30,
+                    counter = 12,
+                    piecesPerBag = 30,
+                    kgPerBag = 15.0,
+                    type = StockEntry.TYPE_SOLD,
                     timestamp = System.currentTimeMillis() - 60000000
                 ),
+                // DPunch size 44×79, Fabricated: 20 bags, 50 pieces/bag, 17.5 kg/bag
                 StockEntry(
-                    itemName = "LDPE Flat Bag", 
-                    size = "25 x 40 cm", 
-                    weightKg = 850.0, 
-                    pieces = 25000, 
-                    counter = 84100, 
-                    type = StockEntry.TYPE_FABRICATED, 
+                    itemName = "DPunch Bag",
+                    size = "44×79",
+                    weightKg = 20 * 17.5,
+                    pieces = 20 * 50,
+                    counter = 20,
+                    piecesPerBag = 50,
+                    kgPerBag = 17.5,
+                    type = StockEntry.TYPE_FABRICATED,
                     timestamp = System.currentTimeMillis() - 54000000
                 ),
+                // DPunch size 44×79, Sold: 5 bags, 50 pieces/bag, 17.5 kg/bag
                 StockEntry(
-                    itemName = "LDPE Flat Bag", 
-                    size = "25 x 40 cm", 
-                    weightKg = 340.0, 
-                    pieces = 10000, 
-                    counter = 0, 
-                    type = StockEntry.TYPE_SOLD, 
+                    itemName = "DPunch Bag",
+                    size = "44×79",
+                    weightKg = 5 * 17.5,
+                    pieces = 5 * 50,
+                    counter = 5,
+                    piecesPerBag = 50,
+                    kgPerBag = 17.5,
+                    type = StockEntry.TYPE_SOLD,
                     timestamp = System.currentTimeMillis() - 48000000
                 ),
+                // T-Shirt Bag, size 30 x 45 cm, Fabricated: 100 bags, 100 pcs/bag, 8.5 kg/bag
                 StockEntry(
-                    itemName = "PP High-Clarity Bag", 
-                    size = "40 x 60 cm", 
-                    weightKg = 1200.0, 
-                    pieces = 18000, 
-                    counter = 45200, 
-                    type = StockEntry.TYPE_FABRICATED, 
+                    itemName = "HDPE T-Shirt Bag",
+                    size = "30 x 45 cm",
+                    weightKg = 100 * 8.5,
+                    pieces = 100 * 100,
+                    counter = 100,
+                    piecesPerBag = 100,
+                    kgPerBag = 8.5,
+                    type = StockEntry.TYPE_FABRICATED,
                     timestamp = System.currentTimeMillis() - 42000000
                 ),
+                // T-Shirt Bag, size 30 x 45 cm, Sold: 40 bags, 100 pcs/bag, 8.5 kg/bag
                 StockEntry(
-                    itemName = "PP High-Clarity Bag", 
-                    size = "40 x 60 cm", 
-                    weightKg = 400.0, 
-                    pieces = 6000, 
-                    counter = 0, 
-                    type = StockEntry.TYPE_SOLD, 
+                    itemName = "HDPE T-Shirt Bag",
+                    size = "30 x 45 cm",
+                    weightKg = 40 * 8.5,
+                    pieces = 40 * 100,
+                    counter = 40,
+                    piecesPerBag = 100,
+                    kgPerBag = 8.5,
+                    type = StockEntry.TYPE_SOLD,
                     timestamp = System.currentTimeMillis() - 36000000
                 )
             )

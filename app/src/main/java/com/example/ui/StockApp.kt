@@ -278,8 +278,8 @@ fun StockApp(
             predefinedItems = viewModel.predefinedItems,
             predefinedSizes = viewModel.predefinedSizes,
             onDismiss = { showLogDialog = false },
-            onSave = { name, size, weight, pieces, counter, type ->
-                viewModel.addEntry(name, size, weight, pieces, counter, type)
+            onSave = { name, size, bags, piecesPerBag, kgPerBag, type ->
+                viewModel.addEntry(name, size, bags, piecesPerBag, kgPerBag, type)
                 showLogDialog = false
             }
         )
@@ -332,7 +332,7 @@ fun OverallMetricsSection(overallSummary: OverallSummary) {
                 modifier = Modifier.padding(12.dp)
             ) {
                 Text(
-                    "TOTAL WEIGHT IN STOCK",
+                    "TOTAL WEIGHT IN STOCK (ኪሎ ግራም/KG)",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.primary,
@@ -355,7 +355,7 @@ fun OverallMetricsSection(overallSummary: OverallSummary) {
                             modifier = Modifier.testTag("metric_net_stock")
                         )
                         Text(
-                            "Net Weight",
+                            "Net Weight Remaining",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -384,6 +384,72 @@ fun OverallMetricsSection(overallSummary: OverallSummary) {
             }
         }
 
+        // Card for Bags (Counter) - BRAND NEW CARD
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .testTag("overall_bags_card"),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                Text(
+                    "TOTAL BAGS IN STOCK (ጆንያ/BAGS / COUNTER)",
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary,
+                    letterSpacing = 1.2.sp
+                )
+                
+                Spacer(modifier = Modifier.height(4.dp))
+                
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Column {
+                        Text(
+                            "${String.format("%,d", overallSummary.netStockBags)} bags",
+                            style = MaterialTheme.typography.headlineLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = if (overallSummary.netStockBags >= 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.error,
+                            modifier = Modifier.testTag("metric_net_bags")
+                        )
+                        Text(
+                            "Net Bags Remaining",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(bottom = 2.dp)
+                    ) {
+                        MetricMiniBadge(
+                            label = "Fabricated",
+                            value = "${String.format("%,d", overallSummary.totalFabricatedBags)} bags",
+                            color = Color(0xFF2E7D32),
+                            icon = Icons.Default.Add,
+                            tag = "metric_fabricated_bags"
+                        )
+                        MetricMiniBadge(
+                            label = "Sold",
+                            value = "${String.format("%,d", overallSummary.totalSoldBags)} bags",
+                            color = Color(0xFFC62828),
+                            icon = Icons.Default.Send,
+                            tag = "metric_sold_bags"
+                        )
+                    }
+                }
+            }
+        }
+
         // Card for Piece Count
         Card(
             modifier = Modifier
@@ -398,7 +464,7 @@ fun OverallMetricsSection(overallSummary: OverallSummary) {
                 modifier = Modifier.padding(12.dp)
             ) {
                 Text(
-                    "TOTAL BAG PIECES IN STOCK",
+                    "TOTAL PIECES IN STOCK (ፍሬ/PIECES)",
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary,
@@ -421,7 +487,7 @@ fun OverallMetricsSection(overallSummary: OverallSummary) {
                             modifier = Modifier.testTag("metric_net_pieces")
                         )
                         Text(
-                            "Net Pieces",
+                            "Net Pieces Remaining",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -610,9 +676,9 @@ fun StockSummaryList(
                     ) {
                         // Title row
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                             modifier = Modifier.fillMaxWidth(),
+                             horizontalArrangement = Arrangement.SpaceBetween,
+                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Text(
@@ -639,31 +705,19 @@ fun StockSummaryList(
                                             color = MaterialTheme.colorScheme.primary
                                         )
                                     }
-                                    if (summary.latestCounter > 0) {
-                                        Box(
-                                            modifier = Modifier
-                                                .clip(RoundedCornerShape(4.dp))
-                                                .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.1f))
-                                                .padding(horizontal = 6.dp, vertical = 2.dp)
-                                        ) {
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(2.dp)
-                                            ) {
-                                                Icon(
-                                                    imageVector = Icons.Default.Info,
-                                                    contentDescription = null,
-                                                    tint = MaterialTheme.colorScheme.secondary,
-                                                    modifier = Modifier.size(10.dp)
-                                                )
-                                                Text(
-                                                    "Counter: ${String.format("%,d", summary.latestCounter)}",
-                                                    fontSize = 10.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    color = MaterialTheme.colorScheme.secondary
-                                                )
-                                            }
-                                        }
+                                    
+                                    Box(
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(4.dp))
+                                            .background(MaterialTheme.colorScheme.secondary.copy(alpha = 0.12f))
+                                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    ) {
+                                        Text(
+                                            "${String.format("%,d", summary.netStockBags)} bags in stock",
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.secondary
+                                        )
                                     }
                                 }
                             }
@@ -678,7 +732,7 @@ fun StockSummaryList(
                                     color = if (summary.netStockKg >= 0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                                 )
                                 Text(
-                                    "${String.format("%,d", summary.netStockPieces)} pcs",
+                                    "${String.format("%,d", summary.netStockPieces)} pcs remaining",
                                     style = MaterialTheme.typography.bodySmall,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -695,7 +749,7 @@ fun StockSummaryList(
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
+                        Spacer(modifier = Modifier.height(10.dp))
 
                         // Fabricated vs Sold details row
                         Row(
@@ -710,22 +764,17 @@ fun StockSummaryList(
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        "${String.format("%,.1f", summary.totalFabricatedKg)} kg",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF2E7D32)
-                                    )
-                                    Text(
-                                        "(${String.format("%,d", summary.totalFabricatedPieces)} pcs)",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFF2E7D32).copy(alpha = 0.8f)
-                                    )
-                                }
+                                Text(
+                                    "${String.format("%,.1f", summary.totalFabricatedKg)} kg",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF2E7D32)
+                                )
+                                Text(
+                                    "(${String.format("%,d", summary.totalFabricatedBags)} bags • ${String.format("%,d", summary.totalFabricatedPieces)} pcs)",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFF2E7D32).copy(alpha = 0.8f)
+                                )
                             }
 
                             // Sold breakdown
@@ -739,22 +788,17 @@ fun StockSummaryList(
                                     fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                ) {
-                                    Text(
-                                        "${String.format("%,.1f", summary.totalSoldKg)} kg",
-                                        fontSize = 12.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFFC62828)
-                                    )
-                                    Text(
-                                        "(${String.format("%,d", summary.totalSoldPieces)} pcs)",
-                                        fontSize = 11.sp,
-                                        color = Color(0xFFC62828).copy(alpha = 0.8f)
-                                    )
-                                }
+                                Text(
+                                    "${String.format("%,.1f", summary.totalSoldKg)} kg",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFC62828)
+                                )
+                                Text(
+                                    "(${String.format("%,d", summary.totalSoldBags)} bags • ${String.format("%,d", summary.totalSoldPieces)} pcs)",
+                                    fontSize = 10.sp,
+                                    color = Color(0xFFC62828).copy(alpha = 0.8f)
+                                )
                             }
                         }
                     }
@@ -855,21 +899,22 @@ fun TransactionHistoryList(
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
                                         if (entry.type == StockEntry.TYPE_FABRICATED)
-                                            "+${String.format("%,.1f", entry.weightKg)} kg"
+                                            "+${String.format("%,d", entry.counter)} bags"
                                         else
-                                            "-${String.format("%,.1f", entry.weightKg)} kg",
+                                            "-${String.format("%,d", entry.counter)} bags",
                                         fontWeight = FontWeight.ExtraBold,
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = if (entry.type == StockEntry.TYPE_FABRICATED) Color(0xFF2E7D32) else Color(0xFFC62828)
                                     )
-                                    if (entry.pieces > 0) {
-                                        Text(
-                                            "${String.format("%,d", entry.pieces)} pcs",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            fontWeight = FontWeight.SemiBold,
-                                            color = if (entry.type == StockEntry.TYPE_FABRICATED) Color(0xFF2E7D32).copy(alpha = 0.8f) else Color(0xFFC62828).copy(alpha = 0.8f)
-                                        )
-                                    }
+                                    Text(
+                                        if (entry.type == StockEntry.TYPE_FABRICATED)
+                                            "+${String.format("%,.1f", entry.weightKg)} kg"
+                                        else
+                                            "-${String.format("%,.1f", entry.weightKg)} kg",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = if (entry.type == StockEntry.TYPE_FABRICATED) Color(0xFF2E7D32).copy(alpha = 0.8f) else Color(0xFFC62828).copy(alpha = 0.8f)
+                                    )
                                 }
                             }
 
@@ -887,9 +932,9 @@ fun TransactionHistoryList(
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
-                                    if (entry.type == StockEntry.TYPE_FABRICATED && entry.counter > 0) {
+                                    if (entry.piecesPerBag > 0 || entry.kgPerBag > 0) {
                                         Text(
-                                            "• Counter: ${String.format("%,d", entry.counter)}",
+                                            "• Specs: ${entry.piecesPerBag} ፍሬ • ${entry.kgPerBag} kg",
                                             style = MaterialTheme.typography.bodySmall,
                                             color = MaterialTheme.colorScheme.secondary,
                                             fontWeight = FontWeight.Medium
@@ -1038,15 +1083,24 @@ fun LogEntryDialog(
     predefinedItems: List<String>,
     predefinedSizes: List<String>,
     onDismiss: () -> Unit,
-    onSave: (itemName: String, size: String, weightKg: Double, pieces: Int, counter: Int, type: String) -> Unit
+    onSave: (itemName: String, size: String, bagsCount: Int, piecesPerBag: Int, kgPerBag: Double, type: String) -> Unit
 ) {
     var selectedType by remember { mutableStateOf(StockEntry.TYPE_FABRICATED) }
     var itemNameInput by remember { mutableStateOf("") }
     var sizeInput by remember { mutableStateOf("") }
-    var weightInput by remember { mutableStateOf("") }
-    var piecesInput by remember { mutableStateOf("") }
-    var counterInput by remember { mutableStateOf("") }
+    
+    var bagsInput by remember { mutableStateOf("") }
+    var piecesPerBagInput by remember { mutableStateOf("") }
+    var kgPerBagInput by remember { mutableStateOf("") }
+    
     var hasError by remember { mutableStateOf(false) }
+
+    val bagsCount = bagsInput.toIntOrNull() ?: 0
+    val piecesPerBag = piecesPerBagInput.toIntOrNull() ?: 0
+    val kgPerBag = kgPerBagInput.toDoubleOrNull() ?: 0.0
+
+    val calculatedTotalWeight = bagsCount * kgPerBag
+    val calculatedTotalPieces = bagsCount * piecesPerBag
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -1144,7 +1198,7 @@ fun LogEntryDialog(
                 OutlinedTextField(
                     value = itemNameInput,
                     onValueChange = { itemNameInput = it },
-                    placeholder = { Text("Enter or select item name...") },
+                    placeholder = { Text("e.g. DPunch Bag, T-Shirt Bag...") },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("dialog_item_name_input"),
@@ -1179,7 +1233,7 @@ fun LogEntryDialog(
                 OutlinedTextField(
                     value = sizeInput,
                     onValueChange = { sizeInput = it },
-                    placeholder = { Text("Enter or select size...") },
+                    placeholder = { Text("e.g. 35×48, 44×79...") },
                      modifier = Modifier
                         .fillMaxWidth()
                         .testTag("dialog_size_input"),
@@ -1188,19 +1242,41 @@ fun LogEntryDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Pieces Input
+                // Bags Count (Operator / Counter input)
                 Text(
-                    "Pieces * (Bags Count)",
+                    "Bags / Counter (የጆንያ ብዛት/ቁጥር) *",
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
-                    value = piecesInput,
-                    onValueChange = { piecesInput = it },
-                    placeholder = { Text("Enter number of pieces (e.g. 5000)...") },
-                    leadingIcon = { Badge { Text("pcs") } },
+                    value = bagsInput,
+                    onValueChange = { bagsInput = it },
+                    placeholder = { Text("Enter number of bags (e.g. 50, 20)...") },
+                    leadingIcon = { Badge { Text("bags") } },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("dialog_counter_input"),
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Pieces per Bag (Amharic context ፍሬ በአንድ ጆንያ)
+                Text(
+                    "Pieces per Bag (በአንድ ጆንያ ውስጥ ያለው ፍሬ) *",
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedTextField(
+                    value = piecesPerBagInput,
+                    onValueChange = { piecesPerBagInput = it },
+                    placeholder = { Text("e.g. 30, 50...") },
+                    leadingIcon = { Badge { Text("ፍሬ") } },
                     modifier = Modifier
                         .fillMaxWidth()
                         .testTag("dialog_pieces_input"),
@@ -1210,18 +1286,18 @@ fun LogEntryDialog(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Weight (kg) Input
+                // Weight per Bag (Amharic weight kg per bag)
                 Text(
-                    "Weight (kg) *",
+                    "Weight per Bag (የአንድ ጆንያ ክብደት በኪሎ/KG) *",
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.secondary
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 OutlinedTextField(
-                    value = weightInput,
-                    onValueChange = { weightInput = it },
-                    placeholder = { Text("Enter weight in kg...") },
+                    value = kgPerBagInput,
+                    onValueChange = { kgPerBagInput = it },
+                    placeholder = { Text("e.g. 15.0, 17.5...") },
                     leadingIcon = { Badge { Text("kg") } },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1230,32 +1306,44 @@ fun LogEntryDialog(
                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                 )
 
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Counter Input (only really relevant for fabrication machines, but let's label it correctly)
-                Text(
-                    if (selectedType == StockEntry.TYPE_FABRICATED) "Machine Counter Reading" else "Machine Counter Reading (Optional)",
-                    style = MaterialTheme.typography.bodySmall,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                OutlinedTextField(
-                    value = counterInput,
-                    onValueChange = { counterInput = it },
-                    placeholder = { Text("Enter machine counter value...") },
-                    leadingIcon = { Icon(Icons.Default.Info, contentDescription = null, modifier = Modifier.size(16.dp)) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .testTag("dialog_counter_input"),
-                    singleLine = true,
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-                )
+                // Render Live Calculations card
+                if (bagsCount > 0 && (piecesPerBag > 0 || kgPerBag > 0.0)) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+                        ),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                "Live Calculations Setup:",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                "• Total Pieces: ${String.format("%,d", calculatedTotalPieces)} frē (${bagsCount} bags × ${piecesPerBag} pcs)",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                "• Total Weight: ${String.format("%.2f", calculatedTotalWeight)} kg (${bagsCount} bags × ${kgPerBag} kg)",
+                                style = MaterialTheme.typography.bodySmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                }
 
                 if (hasError) {
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Spacer(modifier = Modifier.height(12.dp))
                     Text(
-                        "Please fill in all starred (*) fields correctly (weight > 0, pieces > 0).",
+                        "Please fill in all starred (*) fields correctly (bags > 0, pieces > 0, kg > 0).",
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall,
                         fontWeight = FontWeight.SemiBold
@@ -1275,14 +1363,9 @@ fun LogEntryDialog(
                     Spacer(modifier = Modifier.width(8.dp))
                     Button(
                         onClick = {
-                            val weight = weightInput.toDoubleOrNull()
-                            val pieces = piecesInput.toIntOrNull()
-                            val counter = counterInput.toIntOrNull() ?: 0
-                            
                             if (itemNameInput.isNotBlank() && sizeInput.isNotBlank() && 
-                                weight != null && weight > 0 && 
-                                pieces != null && pieces > 0) {
-                                onSave(itemNameInput, sizeInput, weight, pieces, counter, selectedType)
+                                bagsCount > 0 && piecesPerBag > 0 && kgPerBag > 0.0) {
+                                onSave(itemNameInput, sizeInput, bagsCount, piecesPerBag, kgPerBag, selectedType)
                             } else {
                                 hasError = true
                             }
